@@ -1,5 +1,6 @@
 package de.hhn.tictactoe.view
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -12,11 +13,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,22 +33,25 @@ import de.hhn.tictactoe.model.Status
 import de.hhn.tictactoe.R
 import de.hhn.tictactoe.model.Field
 import de.hhn.tictactoe.model.GameModel
+import de.hhn.tictactoe.viewmodel.TicTacToeVM
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlin.math.log
 
 @ExperimentalMaterial3Api
 @Composable
-fun HomeScreen() {
-    // currentGame, gameField are Dummy data
-    val currentGame = GameModel()
-    val gameField =  Array(3) {
-        Array(3) {
-            Field()
-        }
-    }
+fun HomeScreen(viewModel: TicTacToeVM) {
 
-    val currentPlayer = currentGame.currentPlayer
-    val isGameEnding: Boolean = currentGame.isGameEnding
-    val winningPlayer = currentGame.winningPlayer
+
+    val currentPlayer = viewModel.gameModel.currentPlayer
+
+    var isGameEnding = viewModel.gameModel.isGameEnding
+    val winningPlayer = viewModel.gameModel.winningPlayer
     val winningPlayerColor = Field(winningPlayer).showColor()
+    val gameField = viewModel.gameField
+    var currentPlayerMSO = remember { mutableStateOf(Status.PlayerO) }
+    var gameEnded = remember{mutableStateOf(false)}
+
+
 
     Column(
         verticalArrangement = Arrangement.Center,
@@ -53,7 +61,7 @@ fun HomeScreen() {
             text = stringResource(id = R.string.app_name),
             style = MaterialTheme.typography.displayLarge,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(vertical = 50.dp),
+            modifier = Modifier.padding(vertical = 40.dp),
             color = Color.Black
         )
         Column(
@@ -65,7 +73,7 @@ fun HomeScreen() {
                     .fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceAround,
             ) {
-                if (currentPlayer == Status.PlayerX) {
+                if (currentPlayerMSO.value == Status.PlayerO) {
                     Text(
                         text = Status.PlayerX.toString(),
                         style = MaterialTheme.typography.headlineMedium,
@@ -80,7 +88,8 @@ fun HomeScreen() {
                         modifier = Modifier.padding(vertical = 50.dp),
                         color = Color.Red
                     )
-                } else {
+                }
+                if (currentPlayerMSO.value == Status.PlayerX) {
                     Text(
                         text = Status.PlayerX.toString(),
                         style = MaterialTheme.typography.headlineSmall,
@@ -104,11 +113,14 @@ fun HomeScreen() {
                 verticalArrangement = Arrangement.Top,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                gameField.forEach { rows ->
+                gameField.forEachIndexed { rowIndex, rows ->
+
                     Row(
                         horizontalArrangement = Arrangement.SpaceAround,
                     ) {
-                        rows.forEach { field ->
+                        rows.forEachIndexed { columnIndex,field ->
+                            var text = mutableStateOf(field.showText())
+                            var color = mutableStateOf(field.showColor())
                             Card(
                                 modifier = Modifier
                                     .padding(all = 2.dp)
@@ -120,7 +132,14 @@ fun HomeScreen() {
                                     .height(111.dp)
                                     .width(111.dp),
                                 onClick = {
-                                    // TODO:
+
+                                    currentPlayerMSO.value = currentPlayer
+                                    if (!isGameEnding) {
+                                        viewModel.selectField(rowIndex, columnIndex)
+                                        text.value = field.showText()
+                                        color.value = field.showColor()
+                                        gameEnded.value = viewModel.gameModel.isGameEnding
+                                    }
                                 }
                             ) {
                                 Box(
@@ -128,9 +147,9 @@ fun HomeScreen() {
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Text(
-                                        text = field.showText(),
+                                        text = text.value,
                                         fontSize = 60.sp,
-                                        color = field.showColor(),
+                                        color = color.value,
                                     )
                                 }
                             }
@@ -141,9 +160,9 @@ fun HomeScreen() {
                     verticalArrangement = Arrangement.Top,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    if (isGameEnding) {
+                    if (gameEnded.value) {
                         Text(
-                            text = "Wining: $winningPlayer",
+                            text = "Winning: $winningPlayer",
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(vertical = 25.dp),
